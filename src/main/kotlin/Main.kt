@@ -1,14 +1,15 @@
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import reactor.netty.http.client.HttpClient
 
 val baseUrl = "https://swapi.co/api"
 val client = HttpClient.create()
         .baseUrl(baseUrl)
+val mapper = jacksonObjectMapper()
 
 fun main() {
-    val mapper = jacksonObjectMapper()
     println("Hello world !")
     val films = client
             .get()
@@ -26,9 +27,11 @@ fun main() {
                         .aggregate()
                         .asString()
             }
-            .map { mapper.readValue(it, Film::class.java).title }
+            .map { mapper.readValue(it, Film::class.java) }
+            .flatMap { getFilmWithCharacters(it) }
+            .map { it.toString() }
             .toIterable()
-            .joinToString(",\n")
+            .joinToString("\n\n\n")
 
     println(films)
 }
@@ -40,4 +43,25 @@ class PeopleResponse(val results: List<Person>)
 data class Person(val name: String, val films: List<String>)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-class Film(val title: String, val characters: List<String>)
+class Film(val title: String, val characters: List<String>) {
+
+    override fun toString(): String {
+        val title = "# $title\n---------\n- "
+        return title + characters.joinToString("\n- ")
+    }
+}
+
+fun getFilmWithCharacters(baseFilm: Film): Mono<Film> {
+    return Flux.fromIterable(baseFilm.characters)
+            .flatMap {
+                val map: Mono<Person> = client.get()
+                        .uri(it)
+                        .responseContent()
+                        .aggregate()
+                        .asString()
+                        .map { mapper.readValue(it, Person::class.java) }
+                map
+            }
+            .reduce(listOf<String>(), { list, person -> list.plus(person.name) })
+            .map { Film(baseFilm.title, it) }
+}
