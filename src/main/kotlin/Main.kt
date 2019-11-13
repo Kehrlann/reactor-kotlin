@@ -20,15 +20,8 @@ fun main() {
             .map { mapper.readValue(it, PeopleResponse::class.java) }
             .flatMapIterable { it.results }
             .flatMapIterable { it.films }
-            .flatMap {
-                client.get()
-                        .uri(it)
-                        .responseContent()
-                        .aggregate()
-                        .asString()
-            }
-            .map { mapper.readValue(it, Film::class.java) }
-            .flatMap { getFilmWithCharacters(it) }
+            .flatMap { getFilm(it) }
+            .flatMap { getCharactersForFilm(it) }
             .map { it.toString() }
             .toIterable()
             .joinToString("\n\n\n")
@@ -51,17 +44,32 @@ class Film(val title: String, val characters: List<String>) {
     }
 }
 
-fun getFilmWithCharacters(baseFilm: Film): Mono<Film> {
+fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
     return Flux.fromIterable(baseFilm.characters)
             .flatMap {
-                val map: Mono<Person> = client.get()
-                        .uri(it)
-                        .responseContent()
-                        .aggregate()
-                        .asString()
-                        .map { mapper.readValue(it, Person::class.java) }
-                map
+                getPerson(it)
+//                        .doOnNext { p -> println("Got ${p.name} for film ${baseFilm.title}") }
             }
             .reduce(listOf<String>(), { list, person -> list.plus(person.name) })
             .map { Film(baseFilm.title, it) }
+}
+
+private fun getPerson(url: String): Mono<Person> {
+    return client.get()
+            .uri(url)
+            .responseContent()
+            .aggregate()
+            .asString()
+            .map { mapper.readValue<Person>(it, Person::class.java) }
+}
+
+
+private fun getFilm(url: String): Mono<Film> {
+    return client.get()
+            .uri(url)
+            .responseContent()
+            .aggregate()
+            .asString()
+            .map { mapper.readValue(it, Film::class.java) }
+//            .doOnNext { println("Got film: ${it.title}") }
 }
