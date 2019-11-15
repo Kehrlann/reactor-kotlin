@@ -7,36 +7,35 @@ import reactor.core.publisher.Signal
 import reactor.netty.http.client.HttpClient
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.measureTimeMillis
+import kotlin.time.measureTime
 
 
 val client = HttpClient.create()
 val mapper = jacksonObjectMapper()
+val lukeUrl = "https://swapi.co/api/people/1/"
 
-val cache: ConcurrentMap<String, in Signal<out Person>> = ConcurrentHashMap();
+val cache: ConcurrentMap<String, in Signal<out Mono<Person>>> = ConcurrentHashMap();
+val simpleCache: ConcurrentMap<String, Mono<Person>> = ConcurrentHashMap();
 
 fun main() {
     println("Hello world !")
-    val lukeUrl = "https://swapi.co/api/people/1/"
-    val luke: Mono<Person> = CacheMono.lookup(cache, lukeUrl)
-            .onCacheMissResume(client
-                    .get()
-                    .uri(lukeUrl)
-                    .responseContent()
-                    .aggregate()
-                    .asString()
-                    .map { mapper.readValue<Person>(it, Person::class.java) }
-            )
+    var films: String = ""
+    val time = measureTimeMillis {
+        films = getPerson(lukeUrl)
+                .flatMapIterable { it.films }
+                .flatMap { getFilm(it) }
+                .flatMap { getCharactersForFilm(it) }
+                .map { it.toString() }
+                .toIterable()
+                .joinToString("\n\n\n")
 
-    val films = luke
-            .doOnNext { println(it) }
-            .flatMapIterable { it.films }
-            .flatMap { getFilm(it) }
-            .flatMap { getCharactersForFilm(it) }
-            .map { it.toString() }
-            .toIterable()
-            .joinToString("\n\n\n")
+    }
 
     println(films)
+    println()
+    println("Got everything in ${time}ms")
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -64,14 +63,29 @@ fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
 private fun getPerson(url: String): Mono<Person> {
     return CacheMono.lookup(cache, url)
             .onCacheMissResume(
-                    client.get()
+                    Mono.just(client.get()
                             .uri(url)
                             .responseContent()
                             .aggregate()
                             .asString()
                             .map { mapper.readValue<Person>(it, Person::class.java) }
-                            .doOnNext { p -> println("Got ${p.name} from request") }
+                            .doOnNext { p -> println("REQUESTED ${p.name}") }
+                            .cache()
+                    )
             )
+            .flatMap { it }
+}
+
+private fun getPerson2(url: String): Mono<Person> {
+    return simpleCache.getOrPut(url, {
+        client.get()
+                .uri(url)
+                .responseContent()
+                .aggregate()
+                .asString()
+                .map { mapper.readValue<Person>(it, Person::class.java) }
+                .cache()
+    })
 }
 
 
@@ -82,5 +96,5 @@ private fun getFilm(url: String): Mono<Film> {
             .aggregate()
             .asString()
             .map { mapper.readValue(it, Film::class.java) }
-//            .doOnNext { println("Got film: ${it.title}") }
+            .doOnNext { println("Got film: ${it.title}") }
 }
