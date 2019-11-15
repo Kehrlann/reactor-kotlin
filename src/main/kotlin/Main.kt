@@ -1,24 +1,34 @@
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import reactor.cache.CacheMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Signal
 import reactor.netty.http.client.HttpClient
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 
-val baseUrl = "https://swapi.co/api"
+
 val client = HttpClient.create()
-        .baseUrl(baseUrl)
 val mapper = jacksonObjectMapper()
+
+val cache: ConcurrentMap<String, in Signal<out Person>> = ConcurrentHashMap();
 
 fun main() {
     println("Hello world !")
-    val films = client
-            .get()
-            .uri("/people/?search=luke")
-            .responseContent()
-            .aggregate()
-            .asString()
-            .map { mapper.readValue(it, PeopleResponse::class.java) }
-            .flatMapIterable { it.results }
+    val lukeUrl = "https://swapi.co/api/people/1/"
+    val luke: Mono<Person> = CacheMono.lookup(cache, lukeUrl)
+            .onCacheMissResume(client
+                    .get()
+                    .uri(lukeUrl)
+                    .responseContent()
+                    .aggregate()
+                    .asString()
+                    .map { mapper.readValue<Person>(it, Person::class.java) }
+            )
+
+    val films = luke
+            .doOnNext { println(it) }
             .flatMapIterable { it.films }
             .flatMap { getFilm(it) }
             .flatMap { getCharactersForFilm(it) }
@@ -28,9 +38,6 @@ fun main() {
 
     println(films)
 }
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-class PeopleResponse(val results: List<Person>)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class Person(val name: String, val films: List<String>)
@@ -48,19 +55,23 @@ fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
     return Flux.fromIterable(baseFilm.characters)
             .flatMap {
                 getPerson(it)
-//                        .doOnNext { p -> println("Got ${p.name} for film ${baseFilm.title}") }
+                        .doOnNext { p -> println("Got ${p.name} for film ${baseFilm.title}") }
             }
             .reduce(listOf<String>(), { list, person -> list.plus(person.name) })
             .map { Film(baseFilm.title, it) }
 }
 
 private fun getPerson(url: String): Mono<Person> {
-    return client.get()
-            .uri(url)
-            .responseContent()
-            .aggregate()
-            .asString()
-            .map { mapper.readValue<Person>(it, Person::class.java) }
+    return CacheMono.lookup(cache, url)
+            .onCacheMissResume(
+                    client.get()
+                            .uri(url)
+                            .responseContent()
+                            .aggregate()
+                            .asString()
+                            .map { mapper.readValue<Person>(it, Person::class.java) }
+                            .doOnNext { p -> println("Got ${p.name} from request") }
+            )
 }
 
 
