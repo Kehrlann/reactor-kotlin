@@ -56,7 +56,8 @@ fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
                 getPerson(it)
                         .doOnNext { p -> println("Got ${p.name} for film ${baseFilm.title}") }
             }
-            .reduce(listOf<String>(), { list, person -> list.plus(person.name) })
+            .map { it.name }
+            .collectList()
             .map { Film(baseFilm.title, it) }
 }
 
