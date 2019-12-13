@@ -8,15 +8,10 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import kotlin.system.measureTimeMillis
 
-
-val client = HttpClient.create()
-val mapper = jacksonObjectMapper()
-val lukeUrl = "https://swapi.co/api/people/1/"
-
-val cache: ConcurrentMap<String, in Signal<out Mono<Person>>> = ConcurrentHashMap();
+const val lukeUrl = "https://swapi.co/api/people/1/"
 
 fun main() {
-    println("Hello world !")
+    println("Listing Characters in Movies !")
     var films: String = ""
     val time = measureTimeMillis {
         films = getPerson(lukeUrl)
@@ -45,6 +40,8 @@ fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
             .map { Film(baseFilm.title, it) }
 }
 
+
+val cache: ConcurrentMap<String, in Signal<out Mono<Person>>> = ConcurrentHashMap()
 private fun getPerson(url: String): Mono<Person> {
     return CacheMono.lookup(cache, url)
             .onCacheMissResume(
