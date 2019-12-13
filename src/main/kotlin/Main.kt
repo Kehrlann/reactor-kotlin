@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import reactor.cache.CacheMono
 import reactor.core.publisher.Flux
@@ -7,9 +6,7 @@ import reactor.core.publisher.Signal
 import reactor.netty.http.client.HttpClient
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.measureTimeMillis
-import kotlin.time.measureTime
 
 
 val client = HttpClient.create()
@@ -35,17 +32,6 @@ fun main() {
     println(films)
     println()
     println("Got everything in ${time}ms")
-}
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class Person(val name: String, val films: List<String>)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-class Film(val title: String, val characters: List<String>) {
-    override fun toString(): String {
-        val title = "# $title\n---------\n- "
-        return title + characters.joinToString("\n- ")
-    }
 }
 
 fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
