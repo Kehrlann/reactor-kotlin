@@ -17,7 +17,6 @@ val mapper = jacksonObjectMapper()
 val lukeUrl = "https://swapi.co/api/people/1/"
 
 val cache: ConcurrentMap<String, in Signal<out Mono<Person>>> = ConcurrentHashMap();
-val simpleCache: ConcurrentMap<String, Mono<Person>> = ConcurrentHashMap();
 
 fun main() {
     println("Hello world !")
@@ -43,7 +42,6 @@ data class Person(val name: String, val films: List<String>)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 class Film(val title: String, val characters: List<String>) {
-
     override fun toString(): String {
         val title = "# $title\n---------\n- "
         return title + characters.joinToString("\n- ")
@@ -77,6 +75,18 @@ private fun getPerson(url: String): Mono<Person> {
             .flatMap { it }
 }
 
+private fun getFilm(url: String): Mono<Film> {
+    return client.get()
+            .uri(url)
+            .responseContent()
+            .aggregate()
+            .asString()
+            .map { mapper.readValue(it, Film::class.java) }
+            .doOnNext { println("Got film: ${it.title}") }
+}
+
+
+val simpleCache: ConcurrentMap<String, Mono<Person>> = ConcurrentHashMap();
 private fun getPerson2(url: String): Mono<Person> {
     return simpleCache.getOrPut(url, {
         client.get()
@@ -87,15 +97,4 @@ private fun getPerson2(url: String): Mono<Person> {
                 .map { mapper.readValue<Person>(it, Person::class.java) }
                 .cache()
     })
-}
-
-
-private fun getFilm(url: String): Mono<Film> {
-    return client.get()
-            .uri(url)
-            .responseContent()
-            .aggregate()
-            .asString()
-            .map { mapper.readValue(it, Film::class.java) }
-            .doOnNext { println("Got film: ${it.title}") }
 }
