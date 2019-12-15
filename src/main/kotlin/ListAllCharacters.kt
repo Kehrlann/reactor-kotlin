@@ -28,9 +28,10 @@ fun main(args: Array<String>) {
     println("Total characters: ${result?.size ?: 0}")
     println("")
 
-    println(result
-            ?.map { "- $it" }
-            ?.joinToString("\n")
+    println(
+            result
+                    ?.map { "- $it" }
+                    ?.joinToString("\n")
     )
 }
 
