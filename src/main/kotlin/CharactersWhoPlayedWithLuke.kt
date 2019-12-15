@@ -41,21 +41,18 @@ fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
 }
 
 
-val cache: ConcurrentMap<String, in Signal<out Mono<Person>>> = ConcurrentHashMap()
+val cache: ConcurrentMap<String, in Signal<out Person>> = ConcurrentHashMap()
 private fun getPerson(url: String): Mono<Person> {
     return CacheMono.lookup(cache, url)
             .onCacheMissResume(
-                    Mono.just(client.get()
+                    client.get()
                             .uri(url)
                             .responseContent()
                             .aggregate()
                             .asString()
                             .map { mapper.readValue<Person>(it, Person::class.java) }
                             .doOnNext { p -> println("REQUESTED ${p.name}") }
-                            .cache()
-                    )
             )
-            .flatMap { it }
 }
 
 private fun getFilm(url: String): Mono<Film> {
@@ -78,6 +75,7 @@ private fun getPerson2(url: String): Mono<Person> {
                 .aggregate()
                 .asString()
                 .map { mapper.readValue<Person>(it, Person::class.java) }
+                .doOnNext { p -> println("REQUESTED ${p.name}") }
                 .cache()
     })
 }
