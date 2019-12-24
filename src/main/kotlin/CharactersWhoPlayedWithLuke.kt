@@ -1,32 +1,43 @@
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import reactor.blockhound.BlockHound
+import reactor.blockhound.integration.BlockHoundIntegration
 import reactor.cache.CacheMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Signal
-import reactor.netty.http.client.HttpClient
+import reactor.core.scheduler.ReactorBlockHoundIntegration
+import reactor.netty.resources.NettyBlockHoundIntegration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
-import kotlin.system.measureTimeMillis
+
 
 const val lukeUrl = "https://swapi.co/api/people/1/"
 
 fun main() {
+    BlockHound.builder()
+            .with(ReactorBlockHoundIntegration())
+            .with(NettyBlockHoundIntegration())
+            .with(CustomIntegration())
+            .install()
     println("Listing Characters in Movies !")
-    var films: String = ""
-    val time = measureTimeMillis {
-        films = getPerson(lukeUrl)
-                .flatMapIterable { it.films }
-                .flatMap { getFilm(it) }
-                .flatMap { getCharactersForFilm(it) }
-                .map { it.toString() }
-                .toIterable()
-                .joinToString("\n\n\n")
 
-    }
+    val films = getPerson(lukeUrl)
+            .flatMapIterable { it.films }
+            .flatMap { getFilm(it) }
+            .flatMap { getCharactersForFilm(it) }
+            .toIterable()
+            .joinToString("\n\n\n")
 
     println(films)
-    println()
-    println("Got everything in ${time}ms")
+}
+
+class CustomIntegration : BlockHoundIntegration {
+    override fun applyTo(builder: BlockHound.Builder) {
+        builder
+                .allowBlockingCallsInside("sun.security.ssl.Handshaker", "kickstart") // netty SSL stuff
+                .allowBlockingCallsInside("sun.security.ssl.Handshaker", "processLoop") // netty SSL stuff
+                .allowBlockingCallsInside("com.fasterxml.jackson.databind.util.ClassUtil", "getPackageName")    // jackson
+                .allowBlockingCallsInside("java.io.PrintStream", "println") // kotlin's println for doOnNext & stuff
+    }
 }
 
 fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
