@@ -1,6 +1,9 @@
 import com.fasterxml.jackson.module.kotlin.readValue
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.netty.http.client.HttpClient
+
+private val client = HttpClient.create().baseUrl("https://swapi.co/")
 
 fun main(args: Array<String>) {
     println("Listing all characters ...")
@@ -21,7 +24,7 @@ fun main(args: Array<String>) {
 
 private fun getPage(pageNumber: Int): Mono<PaginatedResource<Person>> {
     return client.get()
-            .uri("/people/?page=$pageNumber")
+            .uri("/api/people/?page=$pageNumber")
             .responseContent()
             .aggregate()
             .asString()

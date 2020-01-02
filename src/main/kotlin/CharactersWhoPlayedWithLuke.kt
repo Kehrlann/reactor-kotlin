@@ -5,12 +5,15 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Signal
 import reactor.core.scheduler.ReactorBlockHoundIntegration
+import reactor.netty.http.client.HttpClient
 import reactor.netty.resources.NettyBlockHoundIntegration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
 
-const val lukeUrl = "https://swapi.co/api/people/1/"
+//private val client = HttpClient.create().baseUrl("https://swapi.co/")
+private val client = HttpClient.create().baseUrl("http://localhost:8080/")
+const val lukeUrl = "/api/people/1/"
 
 fun main() {
     BlockHound.builder()
@@ -37,6 +40,7 @@ class CustomIntegration : BlockHoundIntegration {
                 .allowBlockingCallsInside("sun.security.ssl.Handshaker", "processLoop") // netty SSL stuff
                 .allowBlockingCallsInside("com.fasterxml.jackson.databind.util.ClassUtil", "getPackageName")    // jackson
                 .allowBlockingCallsInside("java.io.PrintStream", "println") // kotlin's println for doOnNext & stuff
+                .allowBlockingCallsInside("CharactersWhoPlayedWithLukeKt", "unmarshalPerson") // weird unmarshalling errors
     }
 }
 
@@ -61,7 +65,7 @@ private fun getPerson(url: String): Mono<Person> {
                             .responseContent()
                             .aggregate()
                             .asString()
-                            .map { mapper.readValue<Person>(it, Person::class.java) }
+                            .map { unmarshalPerson(it) }
                             .doOnNext { p -> println("REQUESTED ${p.name}") }
             )
 }
@@ -85,8 +89,10 @@ private fun getPerson2(url: String): Mono<Person> {
                 .responseContent()
                 .aggregate()
                 .asString()
-                .map { mapper.readValue<Person>(it, Person::class.java) }
+                .map { unmarshalPerson(it) }
                 .doOnNext { p -> println("REQUESTED ${p.name}") }
                 .cache()
     })
 }
+
+private fun unmarshalPerson(it: String?) = mapper.readValue<Person>(it, Person::class.java)
