@@ -9,7 +9,7 @@ class ModelsTest {
         val person = Person("someone", emptyList(), "/api/people/1/")
         val film = Film("some film", emptyList(), "/api/films/12/")
 
-        assertThat(person.id).isEqualTo(1)
-        assertThat(film.id).isEqualTo(12)
+        assertThat(person.resourceId()).isEqualTo(1)
+        assertThat(film.resourceId()).isEqualTo(12)
     }
 }
