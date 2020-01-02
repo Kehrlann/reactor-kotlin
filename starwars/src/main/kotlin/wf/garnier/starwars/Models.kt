@@ -1,6 +1,11 @@
 package wf.garnier.starwars
 
 
-data class Person(val name: String, val url: String, val films: List<String>)
+class Person(val name: String, val films: List<String>, url: String): Resource(url)
 
-data class Film(val title: String, val url: String, val characters: List<String>)
+class Film(val title: String, val characters: List<String>, url: String): Resource(url)
+
+open class Resource(private val url: String) {
+    val id: Int
+        get() = Regex("/api/(?<resourceType>.*)/(?<id>\\d+)/").find(url)!!.groups["id"]!!.value.toInt()
+}
