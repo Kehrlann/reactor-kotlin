@@ -5,21 +5,24 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import java.util.concurrent.ConcurrentHashMap
 
 @SpringBootApplication
 class StarwarsApplication {
     private val objectMapper = jacksonObjectMapper()
 
     @Bean
-    fun people(): List<Person> {
+    fun people(): Map<Int, Person> {
 		val file = javaClass.classLoader.getResourceAsStream("data/characters.json")!!
-		return objectMapper.readValue(file)
+        val map = objectMapper.readValue<List<Person>>(file).associateBy { it.resourceId() }
+        return ConcurrentHashMap(map)
     }
 
     @Bean
-    fun films(): List<Film> {
+    fun films(): Map<Int, Film> {
         val file = javaClass.classLoader.getResourceAsStream("data/films.json")!!
-        return objectMapper.readValue(file)
+        val map = objectMapper.readValue<List<Film>>(file).associateBy { it.resourceId() }
+        return ConcurrentHashMap(map)
     }
 }
 
