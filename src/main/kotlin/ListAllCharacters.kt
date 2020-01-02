@@ -16,11 +16,7 @@ fun main(args: Array<String>) {
     println("Total characters: ${result?.size ?: 0}")
     println("")
 
-    println(
-            result
-                    ?.map { "- $it" }
-                    ?.joinToString("\n")
-    )
+    println(result?.joinToString(",\n"))
 }
 
 private fun getPage(pageNumber: Int): Mono<PaginatedResource<Person>> {
