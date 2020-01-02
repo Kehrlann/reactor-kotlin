@@ -48,7 +48,7 @@ fun getCharactersForFilm(baseFilm: Film): Mono<Film> {
             }
             .map { it.name }
             .collectList()
-            .map { Film(baseFilm.title, it) }
+            .map { Film(baseFilm.title, baseFilm.url, it) }
 }
 
 
