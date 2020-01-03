@@ -1,3 +1,5 @@
+package wf.garnier.reactorfun
+
 import com.fasterxml.jackson.module.kotlin.readValue
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

@@ -1,3 +1,5 @@
+package wf.garnier.reactorfun
+
 import reactor.blockhound.BlockHound
 import reactor.blockhound.integration.BlockHoundIntegration
 import reactor.cache.CacheMono
@@ -11,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
 
-//private val client = HttpClient.create().baseUrl("https://swapi.co/")
+//private val wf.garnier.reactorfun.getClient = HttpClient.create().baseUrl("https://swapi.co/")
 private val client = HttpClient.create().baseUrl("http://localhost:8080/")
 const val lukeUrl = "/api/people/1/"
 
@@ -40,7 +42,7 @@ class CustomIntegration : BlockHoundIntegration {
                 .allowBlockingCallsInside("sun.security.ssl.Handshaker", "processLoop") // netty SSL stuff
                 .allowBlockingCallsInside("com.fasterxml.jackson.databind.util.ClassUtil", "getPackageName")    // jackson
                 .allowBlockingCallsInside("java.io.PrintStream", "println") // kotlin's println for doOnNext & stuff
-                .allowBlockingCallsInside("CharactersWhoPlayedWithLukeKt", "unmarshalPerson") // weird unmarshalling errors
+                .allowBlockingCallsInside("CharactersWhoPlayedWithLukeKt", "wf.garnier.reactorfun.unmarshalPerson") // weird unmarshalling errors
     }
 }
 
